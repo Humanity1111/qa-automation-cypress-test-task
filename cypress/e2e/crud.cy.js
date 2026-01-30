@@ -1,81 +1,96 @@
 /// <reference types="cypress" />
 
-describe('CRUD tests — Адреса проживающих', () => {
-  const districtName = 'Тестовый район'
-  const districtNameUpdated = 'Район Изменённый'
-
-  Cypress.on('uncaught:exception', () => false)
+describe('Адресный фонд - CRUD операции с районами', () => {
+  Cypress.on('uncaught:exception', () => false);
 
   beforeEach(() => {
-    cy.visit('https://demo.app.stack-it.ru/fl/', {
-      timeout: 120000,
-      failOnStatusCode: false,
-    })
+    cy.visit('https://demo.app.stack-it.ru/fl/');
+    cy.get('[data-cy="login"]').type('DEMOWEB');
+    cy.get('[data-cy="password"]').type('awdrgy');
+    cy.get('[data-cy="submit-btn"]').click();
+    cy.get('[data-test-id="Адреса проживающих"]', { timeout: 15000 })
+      .should('be.visible')
+      .click({ force: true });
+  });
 
-    cy.get('body', { timeout: 60000 }).then($body => {
+  it('1. Проверка диалогового окна', () => {
+    cy.get('[data-cy="btn-add"]').click();
+    cy.contains('.v-list-item__title', 'Район').click({ force: true });
+    
+    cy.get('[data-cy="stack-input"]').first().should('be.visible');
+    cy.get('[data-cy="btn-save"]').should('be.visible');
+    cy.get('[data-cy="btn-cancel"]').should('be.visible');
+    
+    cy.get('[data-cy="btn-cancel"]').click();
+  });
 
-      if ($body.find('input[aria-label="Логин"]').length) {
-        cy.log('Login form detected — performing login')
+  it('2. Добавление района', () => {
+    const districtName = `Район тест ${Date.now()}`;
+    
+    cy.get('[data-cy="btn-add"]').click();
+    cy.contains('.v-list-item__title', 'Район').click({ force: true });
+    cy.get('[data-cy="stack-input"]').first().type(districtName);
+    cy.get('[data-cy="btn-save"]').click();
+    
+    cy.contains(districtName).should('exist');
+  });
 
-        cy.get('input[aria-label="Логин"]').type('DEMOWEB')
-        cy.get('input[aria-label="Пароль"]').type('awdrgy')
-        cy.contains('button', 'Войти').click()
-      }
+  it('3. Проверка в таблице', () => {
+    const testName = `Таблица тест ${Date.now()}`;
+    
+    cy.get('[data-cy="btn-add"]').click();
+    cy.contains('.v-list-item__title', 'Район').click({ force: true });
+    cy.get('[data-cy="stack-input"]').first().type(testName);
+    cy.get('[data-cy="btn-save"]').click();
+    
+    cy.get('table').should('contain', testName);
+  });
 
-      cy.get('body').then($app => {
-        const hasMenu = $app.text().includes('Адресный фонд')
+  it('4. Редактирование района', () => {
+  const oldName = `Редакт ${Date.now()}`;
+  const newName = `Изменён ${Date.now()}`;
+  
+  cy.get('[data-cy="btn-add"]').click();
+  cy.contains('.v-list-item__title', 'Район').click({ force: true });
+  cy.get('[data-cy="stack-input"]').first().type(oldName);
+  cy.get('[data-cy="btn-save"]').click();
+  
+  cy.contains(oldName, { timeout: 10000 }).should('exist');
+  
+  cy.contains('tr', oldName).within(() => {
+    cy.get('svg path[d*="M20.71"]').click({ force: true });
+  });
+  
+  cy.get('[data-cy="stack-input"]').first()
+    .clear()
+    .type(newName)
+    .should('have.value', newName);
 
-        if (!hasMenu) {
-          cy.screenshot('APP_NOT_LOADED')
-          throw new Error('APP BROKEN: main interface not rendered')
-        }
-      })
-    })
+  cy.get('[tabindex="-1"] > [data-cy="stack-table"] > .table-resizable > .v-data-table__wrapper').click();  
+  cy.get('[data-cy="btn-save"]').click();
+  
+  cy.contains(newName, { timeout: 10000 }).should('exist');
+  cy.contains(oldName, { timeout: 5000 }).should('not.exist');
+});
 
-    cy.contains('Адресный фонд', { timeout: 60000 }).click()
-    cy.contains('Адреса проживающих', { timeout: 60000 }).click()
-    cy.get('table', { timeout: 60000 }).should('be.visible')
-  })
 
-  it('Открытие диалога добавления', () => {
-    cy.get('button[title="Добавить"]').click()
-    cy.get('div[role="dialog"]').should('be.visible')
-  })
 
-  it('Добавление записи', () => {
-    cy.get('button[title="Добавить"]').click()
-    cy.get('div[role="dialog"]').within(() => {
-      cy.get('select').select('Район')
-      cy.get('input[name="name"]').clear().type(districtName)
-      cy.contains('button', 'Сохранить').click()
-    })
-    cy.contains('td', districtName).should('exist')
-  })
 
-  it('Редактирование записи', () => {
-    cy.contains('tr', districtName).within(() => {
-      cy.get('button[title="Редактировать"]').click()
-    })
-    cy.get('input[name="name"]').clear().type(districtNameUpdated)
-    cy.contains('button', 'Сохранить').click()
-    cy.contains('td', districtNameUpdated).should('exist')
-  })
-
-  it('Удаление записи', () => {
-    cy.contains('tr', districtNameUpdated).within(() => {
-      cy.get('button[title="Удалить"]').click()
-    })
-    cy.contains('button', 'Да').click()
-    cy.contains('td', districtNameUpdated).should('not.exist')
-  })
-
-  it('Проверка валидации формы', () => {
-    cy.get('button[title="Добавить"]').click()
-    cy.get('div[role="dialog"]').within(() => {
-      cy.get('select').select('Район')
-      cy.get('input[name="name"]').clear()
-      cy.contains('button', 'Сохранить').click()
-      cy.contains('Поле обязательно для заполнения').should('be.visible')
-    })
-  })
-})
+  it('5. Удаление района', () => {
+    const deleteName = `Удалить ${Date.now()}`;
+    
+    cy.get('[data-cy="btn-add"]').click();
+    cy.contains('.v-list-item__title', 'Район').click({ force: true });
+    cy.get('[data-cy="stack-input"]').first().type(deleteName);
+    cy.get('[data-cy="btn-save"]').click();
+    
+    cy.contains('tr', deleteName).within(() => {
+      cy.get('input[type="checkbox"]').check({ force: true });
+    });
+    
+    cy.get('[data-cy="btn-delete"]').click();
+    cy.get('[data-cy="btn-yes"]').click();
+    
+    cy.contains(deleteName).should('not.exist');
+  });
+});

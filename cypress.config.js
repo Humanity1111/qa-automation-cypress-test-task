@@ -1,9 +1,9 @@
-const { defineConfig } = require("cypress");
+import { defineConfig } from "cypress";
 
-module.exports = defineConfig({
+export default defineConfig({
   e2e: {
-    setupNodeEvents(on, config) {
-      // implement node event listeners here
-    },
-  },
+    baseUrl: 'https://demo.app.stack-it.ru',
+    pageLoadTimeout: 120000, // 120 секунд
+    defaultCommandTimeout: 15000
+  }
 });
